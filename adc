@@ -1,0 +1,226 @@
+#include<STC15F2K60S2.h> 
+#include "intrins.h" // STC15W408AS   11.0592MHz  SOP16
+
+unsigned int ADC_DATA,ADC_AV;
+unsigned int ADC_AVC[9];
+
+void Delay1ms()		//@11.0592MHz
+{
+	unsigned char i, j;
+
+	_nop_();
+	_nop_();
+	_nop_();
+	i = 11;
+	j = 190;
+	do
+	{
+		while (--j);
+	} while (--i);
+}
+
+void Delay10ms()		//@11.0592MHz
+{
+	unsigned char i, j;
+
+	i = 108;
+	j = 145;
+	do
+	{
+		while (--j);
+	} while (--i);
+}
+
+void Delay100ms()		//@11.0592MHz
+{
+	unsigned char i, j, k;
+
+	_nop_();
+	_nop_();
+	i = 5;
+	j = 52;
+	k = 195;
+	do
+	{
+		do
+		{
+			while (--k);
+		} while (--j);
+	} while (--i);
+}
+/*
+void UartInit(void)		//9600bps@11.0592MHz
+{
+	SCON = 0x50;		//
+	AUXR |= 0x01;		//
+	AUXR |= 0x04;		//
+	T2L = 0xE0;		//T2
+	T2H = 0xFE;		//
+	AUXR |= 0x10;		//
+}
+
+void UARTSendByte(unsigned char byte)//
+{
+SBUF=byte; //
+while(TI==0); //TI
+TI=0; //
+}
+*/
+void InitADC ()
+{
+	P1M0 = 0x20; // 0010 0000  P1.5  ADC 
+  P1M1 = 0x00;//
+	P1ASF=0x20;   //1.5
+CLK_DIV|=0x20;	//CLK_DIV|=0x20;  CLK_DIV &=~0x20; 
+//ADCCFG = 0x0f; // ADC /2/16/16    ADC_CONTR = 0x85; // ADC
+ADC_CONTR =0x80; // ADC  1000 0000
+Delay100ms();	
+
+}
+
+unsigned int GetAD() 
+{
+	unsigned char DATA_H,DATA_L,aah,aal;
+	ADC_DATA=0;
+ADC_CONTR = 0xe0; //1110 0000     AD   ADC_CONTR = 0x80; // AD 
+Delay1ms();
+ADC_CONTR = 0xe5;// 1110 0101
+Delay10ms();
+ADC_CONTR = 0xed; //1110 1101 
+while (!(ADC_CONTR & 0x10));// //while (!(ADC_CONTR & 0x10));  while(ADC_CONTR & 0x10==0)
+ ADC_CONTR &= ~0x10;  //ADC_CONTR &=0xE7;
+	
+DATA_H=ADC_RES;
+DATA_L=ADC_RESL;
+ADC_DATA=DATA_H*256+DATA_L;
+
+//ADC_DATA=ADC_DATA/1023*500;
+
+//ADC_CONTR=0x00;//ADC_CONTR |=0x80; 
+	
+//UARTSendByte(DATA_H);
+//	UARTSendByte(DATA_L);
+
+aah=ADC_DATA>> 8;
+aal=ADC_DATA & 0xff;
+//UARTSendByte(aah);
+//UARTSendByte(aal);
+
+ADC_CONTR =0x00; 
+
+	return (ADC_DATA);
+
+}	
+
+unsigned int AD_average()
+{
+	unsigned int ADC_AV1;
+  unsigned char mi;
+
+ADC_AV1 =	GetAD();
+		
+for(mi=0;mi<10;mi++)	
+{
+ADC_AVC[mi]=GetAD();
+}
+
+ADC_AV=ADC_AVC[0]+ADC_AVC[1]+ADC_AVC[2]+ADC_AVC[3]+ADC_AVC[4]+ADC_AVC[5]+ADC_AVC[6]+ADC_AVC[7]+ADC_AVC[8]+ADC_AVC[9];
+ADC_AV=ADC_AV/10;
+
+  return (ADC_AV);
+
+}
+
+
+void ADC_LED(unsigned int ale)
+{
+	if(ale<=460)              //0
+	{
+	P3=0xff; P10=1;P11=1;P12=1;P13=1;
+	}
+	
+	if(ale>=460&&ale<=487)  //1
+	{
+	P3=0xfe; P10=1;P11=1;P12=1;P13=1;Delay100ms();Delay100ms();P3=0xff; Delay100ms();Delay100ms();
+	}
+	
+		if(ale>=487&&ale<=501) //2
+	{
+	P3=0xfc; P10=1;P11=1;P12=1;P13=1;
+	}
+	
+		if(ale>=501&&ale<=516) //3
+	{
+	P3=0xf8; P10=1;P11=1;P12=1;P13=1;
+	}
+	
+		if(ale>=516&&ale<=530) //4
+	{
+	P3=0xf0; P10=1;P11=1;P12=1;P13=1;
+	}
+	
+		if(ale>=530&&ale<=544)  //5
+	{
+	P3=0x80; P10=1;P11=1;P12=1;P13=1;
+	}
+	
+		if(ale>=544&&ale<=559) //6
+	{
+	P3=0x00; P10=1;P11=1;P12=1;P13=1;
+	}
+	
+		if(ale>=559&&ale<=573) //7
+	{
+	P3=0x00; P10=0;P11=1;P12=1;P13=1;
+	}
+	
+		if(ale>=573&&ale<=587) //8
+	{
+	P3=0x00; P10=0;P11=0;P12=1;P13=1;
+	}
+	
+		if(ale>=587&&ale<=598) //9
+	{
+P3=0x00; P10=0;P11=0;P12=0;P13=1;
+	}
+	
+		if(ale>=598) //10
+	{
+P3=0x00; P10=0;P11=0;P12=0;P13=0;
+	}
+
+
+}
+
+void InitIO()
+{
+  P3M0 = 0x00;  P3M1 = 0x00;P5M0 = 0x00;  P5M1 = 0x00;
+		P10=0;P11=0;P12=0;P13=0;P3=0x00;Delay100ms();Delay100ms();Delay100ms();Delay100ms();Delay100ms();
+		P3=0xff;P10=1;P11=1;P12=1;P13=1;
+}
+	
+
+void main(void)
+{
+unsigned int V_ad;
+
+InitIO();
+InitADC ();
+//UartInit();
+//	EA=1;
+	P55=1;
+while(1) 
+  {
+V_ad=AD_average();
+	 if(P55==0)
+	  {
+ADC_LED(V_ad);
+	  }
+else
+     {
+ADC_LED(0);
+     }
+ }	 
+}
+
+
